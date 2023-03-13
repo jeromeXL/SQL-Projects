@@ -25,3 +25,14 @@ its ingredients (usually a partial list because brewers don't want to reveal too
 for each brewery, we would like to store
 its name, its location, the year it was founded, its website
 The schema is described in more detail both as an ER model and an SQL schema in the schema page.
+
+# Movies 
+
+The Internet Movie Database (IMDB) is a vast store of information about all kinds of video content (movies, TV series, short films, ...). It holds details of the video products themselves, the people involved in making them (actors, directors, etc.) and the roles played by these people.
+
+For this assignment, we have set up a database, which is a tiny subset of the main IMDB, containing information about movies from 1990 to 2022. The main entities in this database are:
+
+Movies: title, running time, year made, country of origin, rating
+People: name, year born, year died, jobs they have had in the industry
+Principals: people who have an important role in a movie (e.g. star actor)
+Countries: places where movies are made and released

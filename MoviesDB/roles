@@ -1,0 +1,107 @@
+#!/usr/bin/python3
+
+# COMP3311 22T3 Assignment 2
+# Print a list of character roles played by an actor/actress
+
+import sys
+import psycopg2
+import helpers
+
+### Globals
+
+db = None
+usage = f"Usage: {sys.argv[0]} FullName"
+
+### Command-line args
+
+if len(sys.argv) < 2:
+   print(usage)
+   exit(1)
+
+# process the command-line args ...
+FullName = sys.argv[1]
+
+### Queries
+getPeopleWithName = '''
+select distinct p1.id
+from people p1
+where p1.name = %s
+order by id
+;
+'''
+
+getPeopleWithActingRoles = '''
+select distinct p1.id
+from people p1 
+inner join principals p2 on p1.id = p2.person
+where p1.name = %s
+and (p2.job = 'actor' or p2.job = 'actress' or p2.job = 'self')
+order by id
+;
+'''
+
+getRoles = '''
+select p3.role, m.title, m.year
+from movies m 
+inner join principals p2 on p2.movie = m.id
+inner join people p1 on p2.person = p1.id
+inner join playsrole p3 on p3.inmovie = p2.id
+where p1.id = %s
+and (p2.job = 'actor' or p2.job = 'actress' or p2.job = 'self')
+order by m.year asc, m.title, p3.role
+;
+'''
+
+### Manipulating database
+
+try:
+   # your code goes here
+   db = psycopg2.connect(dbname = "ass2")
+   cur = db.cursor()
+   
+   # Get all people with the name
+   cur.execute(getPeopleWithName, [FullName])
+   peopleWithName = cur.fetchall()
+   
+   if (len(peopleWithName) == 0):
+      print(f"No such person")
+      exit(1)
+      
+   # Get people who have acting roles 
+   cur.execute(getPeopleWithActingRoles, [FullName])
+   peopleWithActingRoles = cur.fetchall()
+   
+   if (len(peopleWithActingRoles) == 0 ):
+      print(f"No acting roles")
+      exit(1)
+   
+   # Case: One person with name and has acting role
+   if (len(peopleWithName) == 1):
+      cur.execute(getRoles, [peopleWithActingRoles[0]])
+      roles = cur.fetchall()
+   
+      for r in roles:
+         print(f"{r[0]} in {r[1]} ({r[2]})")
+   
+   # Case: Multiple people with name
+   elif (len(peopleWithName) > 1):
+      i = 1
+      for p in peopleWithName:
+         cur.execute(getRoles, [p])
+         roles = cur.fetchall()
+            
+         print(f"{FullName} #{i}")
+         
+         if (len(roles) == 0):
+            print(f"No acting roles")
+            
+         for r in roles:
+            print(f"{r[0]} in {r[1]} ({r[2]})")
+         i += 1
+
+except Exception as err:
+   print("DB error: ", err)
+finally:
+   if db:
+      db.close()
+

@@ -1,0 +1,95 @@
+#!/usr/bin/python3
+
+# COMP3311 22T3 Assignment 2
+# Print info about one movie; may need to choose
+
+import sys
+import psycopg2
+import helpers
+import traceback
+
+
+### Globals
+
+db = None
+usage = f"Usage: {sys.argv[0]} 'PartialMovieName'"
+
+### Command-line args
+
+if len(sys.argv) < 2:
+   print(usage)
+   exit(1)
+
+# process the command-line args ...
+PartialMovieName = sys.argv[1]
+PartialMovieFormatted = "%{}%".format(PartialMovieName)
+
+### Queries
+getMovies = '''
+select m.id, m.title, m.year
+from movies m
+where m.title ilike %s
+order by m.title, m.year asc 
+;
+'''
+
+getPrincipals = '''
+select p1.name, p2.job, p3.role
+from movies m
+inner join principals p2 on p2.movie = m.id
+inner join people p1 on p2.person = p1.id
+full outer join playsrole p3 on p3.inmovie = p2.id
+where m.id = %s
+order by p2.ord
+;
+'''
+
+### Manipulating database
+
+try:
+   # your code goes here
+   db = psycopg2.connect("dbname = ass2")
+   cur = db.cursor()
+   
+   cur.execute(getMovies, [PartialMovieFormatted])
+   movies = cur.fetchall()
+   
+   # Case: No movies
+   if (len(movies) == 0):
+      print(f"No movie matching: '{PartialMovieName}'")
+      exit(1)
+   
+   # Case: 1 movie
+   if (len(movies) == 1):
+      IndexNumber = 0
+         
+   # Case: n movies
+   else:
+      i = 1
+      for m in movies:
+         print(f"{i}. {m[1]} ({m[2]})")
+         i += 1
+      MovieNumber = int(input("Which movie? "))
+      
+      IndexNumber = MovieNumber - 1
+      
+   print(f"{movies[IndexNumber][1]} ({movies[IndexNumber][2]})")
+   MovieID = movies[IndexNumber][0]
+   cur.execute(getPrincipals, [MovieID])
+   principals = cur.fetchall()
+      
+   for p in principals:
+      if (p[1] in ('actor', 'actress', 'self')):
+         if (p[2] == None):
+            print(f"{p[0]} plays ???")
+         else:
+            print(f"{p[0]} plays {p[2]}")
+      else:
+         print(f"{p[0]}: {p[1]}")
+
+
+except Exception as err:
+   print("DB error: ", err)
+finally:
+   if db:
+      db.close()

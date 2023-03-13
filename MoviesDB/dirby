@@ -1,0 +1,98 @@
+#!/usr/bin/python3
+
+# COMP3311 22T3 Assignment 2
+# Print a list of movies directed by a given person
+
+import sys
+import psycopg2
+import helpers
+import traceback
+
+### Globals
+
+db = None
+usage = f"Usage: {sys.argv[0]} FullName"
+
+### Command-line args
+
+if len(sys.argv) < 2:
+   print(usage)
+   exit(1)
+
+# process the command-line args ...
+
+FullName = sys.argv[1]
+
+### Queries
+
+getPeopleWithName = '''
+select distinct p1.id
+from people p1
+where p1.name = %s
+order by id
+;
+'''
+
+getPeopleWhoDirect = '''
+select distinct p1.id
+from people p1 
+inner join principals p2 on p1.id = p2.person
+where p1.name = %s
+and p2.job = 'director'
+order by id
+;
+'''
+
+getFilmsDirectedBy = '''
+select m.title, m.year
+from movies m 
+inner join principals p2 on p2.movie = m.id
+inner join people p1 on p2.person = p1.id
+where p2.job = 'director' 
+and p1.id = %s
+order by year asc
+;
+
+'''
+
+### Manipulating database
+
+try:
+   # your code goes here
+   db = psycopg2.connect(dbname = "ass2")
+   cur = db.cursor()
+   
+   # Get all people with the name
+   cur.execute(getPeopleWithName, [FullName])
+   peopleWithName = cur.fetchall()
+   
+   if len(peopleWithName) == 0:
+      print(f"No such person")
+      exit(1)
+   
+   # Get people who direct sorted by ID and first person
+   cur.execute(getPeopleWhoDirect, [FullName])
+   getPeopleWhoDirect = cur.fetchall()
+   
+   if len(getPeopleWhoDirect) == 0 and len(peopleWithName) == 1:
+      print(f"{FullName} has not directed any movies")
+      exit(1)
+      
+   elif len(getPeopleWhoDirect) == 0 and len(peopleWithName) > 1:
+      print(f"None of the people called {FullName} has directed any films")
+      exit(1)
+   
+   # Get movies from the first person 
+   cur.execute(getFilmsDirectedBy, getPeopleWhoDirect[0])
+   list = cur.fetchall()
+   
+   for t in list:
+      print(f"{t[0]} ({t[1]})")
+
+except Exception as err:
+   print("DB error: ", err)
+   traceback.print_exc()
+finally:
+   if db:
+      db.close()
+
